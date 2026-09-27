@@ -1,0 +1,561 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lucy AI Companion</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        }
+
+        body, html {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: #0b0f19;
+            color: #ffffff;
+        }
+
+        /* Full Screen Face Container */
+        .full-screen-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background: radial-gradient(circle at center, #1e1b4b 0%, #0b0f19 100%);
+            z-index: 1;
+        }
+
+        /* Top Controls Bar */
+        .top-controls {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            right: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 10;
+        }
+
+        .control-group {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .icon-btn {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: #ffffff;
+            padding: 8px 12px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            backdrop-filter: blur(10px);
+            transition: all 0.3s ease;
+        }
+
+        .icon-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        /* Camera Indicator Badge */
+        .camera-badge {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            background: rgba(0, 0, 0, 0.4);
+            padding: 6px 12px;
+            border-radius: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            font-size: 12px;
+            backdrop-filter: blur(10px);
+        }
+
+        .camera-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background-color: #ef4444; /* Red by default */
+            transition: background-color 0.3s ease;
+        }
+
+        .camera-dot.active {
+            background-color: #22c55e; /* Green when active */
+            box-shadow: 0 0 10px #22c55e;
+        }
+
+        /* Robotic Face Styling */
+        .robot-face-wrapper {
+            position: relative;
+            width: 220px;
+            height: 220px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 30px;
+        }
+
+        .robot-head {
+            width: 180px;
+            height: 180px;
+            background: linear-gradient(135deg, #38bdf8 0%, #0284c7 100%);
+            border-radius: 40px;
+            position: relative;
+            box-shadow: 0 0 40px rgba(56, 189, 248, 0.4);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            transition: background 0.5s ease, box-shadow 0.5s ease;
+        }
+
+        .robot-ears {
+            position: absolute;
+            width: 200px;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .ear {
+            width: 14px;
+            height: 50px;
+            background: #0284c7;
+            border-radius: 6px;
+        }
+
+        .robot-eyes {
+            display: flex;
+            gap: 36px;
+            margin-bottom: 20px;
+        }
+
+        .eye {
+            width: 28px;
+            height: 38px;
+            background: #0b0f19;
+            border-radius: 14px;
+            position: relative;
+            overflow: hidden;
+            transition: height 0.2s ease;
+        }
+
+        .pupil {
+            width: 14px;
+            height: 14px;
+            background: #ffffff;
+            border-radius: 50%;
+            position: absolute;
+            top: 12px;
+            left: 7px;
+            box-shadow: 0 0 8px #ffffff;
+        }
+
+        .robot-mouth {
+            width: 44px;
+            height: 10px;
+            background: #0b0f19;
+            border-radius: 5px;
+            transition: all 0.3s ease;
+        }
+
+        /* Mood classes for robot */
+        .robot-head.happy {
+            background: linear-gradient(135deg, #4ade80 0%, #16a34a 100%);
+            box-shadow: 0 0 40px rgba(74, 222, 128, 0.4);
+        }
+        .robot-head.happy .robot-mouth {
+            width: 50px;
+            height: 16px;
+            border-bottom-left-radius: 20px;
+            border-bottom-right-radius: 20px;
+            border-top-left-radius: 0;
+            border-top-right-radius: 0;
+        }
+
+        .robot-head.thinking {
+            background: linear-gradient(135deg, #fbbf24 0%, #d97706 100%);
+            box-shadow: 0 0 40px rgba(251, 191, 36, 0.4);
+        }
+        .robot-head.thinking .robot-mouth {
+            width: 20px;
+            height: 10px;
+            border-radius: 50%;
+        }
+
+        .robot-head.excited {
+            background: linear-gradient(135deg, #f472b6 0%, #db2777 100%);
+            box-shadow: 0 0 40px rgba(244, 114, 182, 0.4);
+        }
+
+        /* Floating Popup Chat Overlay */
+        .chat-popup-overlay {
+            position: absolute;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 90%;
+            max-width: 480px;
+            background: rgba(15, 23, 42, 0.85);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 24px;
+            backdrop-filter: blur(20px);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            z-index: 10;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        /* Message container with top fading gradient */
+        .chat-messages {
+            max-height: 160px;
+            overflow-y: auto;
+            padding: 16px 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            mask-image: linear-gradient(to bottom, transparent 0%, black 20%);
+            -webkit-mask-image: linear-gradient(to bottom, transparent 0%, black 20%);
+            scroll-behavior: smooth;
+        }
+
+        .chat-messages::-webkit-scrollbar {
+            width: 4px;
+        }
+        .chat-messages::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 4px;
+        }
+
+        .message {
+            max-width: 80%;
+            padding: 10px 14px;
+            border-radius: 16px;
+            font-size: 14px;
+            line-height: 1.4;
+            word-wrap: break-word;
+        }
+
+        .message.user {
+            background: #3b82f6;
+            color: #ffffff;
+            align-self: flex-end;
+            border-bottom-right-radius: 4px;
+        }
+
+        .message.lucy {
+            background: rgba(255, 255, 255, 0.1);
+            color: #f1f5f9;
+            align-self: flex-start;
+            border-bottom-left-radius: 4px;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        /* Chat Input Box */
+        .chat-input-area {
+            display: flex;
+            align-items: center;
+            padding: 12px 16px;
+            background: rgba(0, 0, 0, 0.3);
+            border-top: 1px solid rgba(255, 255, 255, 0.08);
+            gap: 10px;
+        }
+
+        .chat-input {
+            flex: 1;
+            background: transparent;
+            border: none;
+            color: #ffffff;
+            font-size: 14px;
+            outline: none;
+        }
+
+        .chat-input::placeholder {
+            color: rgba(255, 255, 255, 0.4);
+        }
+
+        .send-btn, .mic-btn {
+            background: #38bdf8;
+            border: none;
+            color: #0b0f19;
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: transform 0.2s, background 0.2s;
+        }
+
+        .send-btn:hover, .mic-btn:hover {
+            transform: scale(1.05);
+            background: #7dd3fc;
+        }
+
+        .mic-btn.recording {
+            background: #ef4444;
+            color: #ffffff;
+            animation: pulse 1.5s infinite;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4); }
+            70% { transform: scale(1.05); box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); }
+            100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+        }
+
+        /* Hidden video element for camera processing */
+        #webcam {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="full-screen-container">
+        
+        <!-- Top Controls Bar -->
+        <div class="top-controls">
+            <div class="control-group">
+                <!-- Camera Toggle & Indicator -->
+                <button class="icon-btn" id="cameraToggleBtn" onclick="toggleCamera()" title="Toggle Camera">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+                    <span>Camera</span>
+                </button>
+                <div class="camera-badge">
+                    <div class="camera-dot" id="cameraDot"></div>
+                    <span id="cameraStatusText" style="font-size: 11px; opacity: 0.8;">Off</span>
+                </div>
+            </div>
+
+            <div class="control-group">
+                <button class="icon-btn" onclick="toggleVoice()" id="voiceToggleBtn" title="Toggle Voice Output">
+                    <span>🔊 Sound: On</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Expressive Robot Face -->
+        <div class="robot-face-wrapper">
+            <div class="robot-head" id="robotHead">
+                <div class="robot-ears">
+                    <div class="ear"></div>
+                    <div class="ear"></div>
+                </div>
+                <div class="robot-eyes">
+                    <div class="eye" id="leftEye"><div class="pupil"></div></div>
+                    <div class="eye" id="rightEye"><div class="pupil"></div></div>
+                </div>
+                <div class="robot-mouth" id="robotMouth"></div>
+            </div>
+        </div>
+
+        <!-- Floating Popup Chat Overlay -->
+        <div class="chat-popup-overlay">
+            <div class="chat-messages" id="chatMessages">
+                <div class="message lucy">Hey there! Tap on the camera icon above to turn on your camera so I can see you, or just chat with me here! ✨</div>
+            </div>
+            <div class="chat-input-area">
+                <button class="mic-btn" id="micBtn" onclick="toggleSpeechRecognition()" title="Voice Input">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v1a7 7 0 0 1-14 0v-1"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
+                </button>
+                <input type="text" class="chat-input" id="userInput" placeholder="Say something to Lucy..." onkeypress="handleKeyPress(event)">
+                <button class="send-btn" onclick="sendMessage()" title="Send">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+                </button>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Hidden Video Feed -->
+    <video id="webcam" autoplay playsinline></video>
+
+    <script>
+        const API_KEY = "AQ.Ab8RN6LLs1oKQm9oEFKzt3RDmVH3b1ic2XRO4s2i7llrkiuAKw";
+        let cameraActive = false;
+        let soundEnabled = true;
+        let recognition = null;
+        let isRecording = false;
+
+        // Initialize Speech Recognition if supported
+        if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            recognition = new SpeechRecognition();
+            recognition.continuous = false;
+            recognition.interimResults = false;
+            recognition.lang = 'en-US';
+
+            recognition.onresult = (event) => {
+                const text = event.results[0][0].transcript;
+                document.getElementById('userInput').value = text;
+                sendMessage();
+                stopSpeechRecognition();
+            };
+
+            recognition.onerror = () => {
+                stopSpeechRecognition();
+            };
+
+            recognition.onend = () => {
+                stopSpeechRecognition();
+            };
+        }
+
+        function toggleSpeechRecognition() {
+            if (!recognition) {
+                alert("Speech recognition is not supported in your browser.");
+                return;
+            }
+            if (isRecording) {
+                recognition.stop();
+            } else {
+                recognition.start();
+                isRecording = true;
+                document.getElementById('micBtn').classList.add('recording');
+            }
+        }
+
+        function stopSpeechRecognition() {
+            isRecording = false;
+            document.getElementById('micBtn').classList.remove('recording');
+        }
+
+        function toggleVoice() {
+            soundEnabled = !soundEnabled;
+            const btn = document.getElementById('voiceToggleBtn');
+            btn.innerHTML = soundEnabled ? '<span>🔊 Sound: On</span>' : '<span>🔇 Sound: Off</span>';
+            if (!soundEnabled) window.speechSynthesis.cancel();
+        }
+
+        async function toggleCamera() {
+            const videoElement = document.getElementById('webcam');
+            const cameraDot = document.getElementById('cameraDot');
+            const cameraStatusText = document.getElementById('cameraStatusText');
+
+            if (!cameraActive) {
+                try {
+                    const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+                    videoElement.srcObject = stream;
+                    cameraActive = true;
+                    cameraDot.classList.add('active');
+                    cameraStatusText.innerText = 'On';
+                    setMood('happy');
+                    appendMessage("Lucy", "I can see you now! Looking great! ✨");
+                    speak("I can see you now! Looking great!");
+                } catch (err) {
+                    alert("Unable to access camera. Please check permissions.");
+                    cameraActive = false;
+                }
+            } else {
+                const stream = videoElement.srcObject;
+                if (stream) {
+                    stream.getTracks().forEach(track => track.stop());
+                }
+                videoElement.srcObject = null;
+                cameraActive = false;
+                cameraDot.classList.remove('active');
+                cameraStatusText.innerText = 'Off';
+                setMood('normal');
+            }
+        }
+
+        function setMood(mood) {
+            const head = document.getElementById('robotHead');
+            head.className = 'robot-head';
+            if (mood && mood !== 'normal') {
+                head.classList.add(mood);
+            }
+        }
+
+        function handleKeyPress(event) {
+            if (event.key === 'Enter') {
+                sendMessage();
+            }
+        }
+
+        async function sendMessage() {
+            const input = document.getElementById('userInput');
+            const text = input.value.trim();
+            if (!text) return;
+
+            appendMessage("You", text);
+            input.value = "";
+            setMood('thinking');
+
+            try {
+                const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${API_KEY}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        contents: [{
+                            parts: [{
+                                text: `You are Lucy, an expressive, friendly, and lively AI companion living on a web screen. Keep your response concise (1 to 2 short sentences max) so it fits neatly in chat popups. User says: ${text}`
+                            }]
+                        }]
+                    })
+                });
+
+                const data = await response.json();
+                if (data.candidates && data.candidates[0].content.parts[0].text) {
+                    const reply = data.candidates[0].content.parts[0].text;
+                    appendMessage("Lucy", reply);
+                    setMood('happy');
+                    speak(reply);
+                } else {
+                    throw new Error("Invalid response format");
+                }
+            } catch (error) {
+                appendMessage("Lucy", "Oops! I encountered a connection glitch, but I'm right here with you!");
+                setMood('normal');
+                speak("Oops! I encountered a connection glitch, but I'm right here with you!");
+            }
+        }
+
+        function appendMessage(sender, text) {
+            const container = document.getElementById('chatMessages');
+            const msgDiv = document.createElement('div');
+            msgDiv.className = `message ${sender.toLowerCase() === 'you' ? 'user' : 'lucy'}`;
+            msgDiv.innerText = text;
+            container.appendChild(msgDiv);
+            container.scrollTop = container.scrollHeight;
+        }
+
+        function speak(text) {
+            if (!soundEnabled || !('speechSynthesis' in window)) return;
+            window.speechSynthesis.cancel();
+            const utterance = new SpeechSynthesisUtterance(text);
+            utterance.rate = 1.0;
+            utterance.pitch = 1.2;
+            window.speechSynthesis.speak(utterance);
+        }
+
+        // Subtle random eye blinking animation
+        setInterval(() => {
+            const leftEye = document.getElementById('leftEye');
+            const rightEye = document.getElementById('rightEye');
+            leftEye.style.height = '4px';
+            rightEye.style.height = '4px';
+            setTimeout(() => {
+                leftEye.style.height = '38px';
+                rightEye.style.height = '38px';
+            }, 150);
+        }, 4000);
+    </script>
+</body>
+</html>
